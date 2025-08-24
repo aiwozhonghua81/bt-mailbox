@@ -1,0 +1,39 @@
+{
+  "name": "mailbox-admin-frontend",
+  "version": "1.0.0",
+  "description": "企业级邮箱系统管理前端",
+  "main": "src/main.js",
+  "scripts": {
+    "serve": "vue-cli-service serve",
+    "build": "vue-cli-service build",
+    "lint": "vue-cli-service lint",
+    "dev": "npm run serve"
+  },
+  "dependencies": {
+    "vue": "^3.3.0",
+    "element-plus": "^2.4.0",
+    "axios": "^1.5.0",
+    "echarts": "^5.4.0",
+    "@element-plus/icons-vue": "^2.1.0"
+  },
+  "devDependencies": {
+    "@vue/cli-service": "^5.0.0",
+    "@vue/compiler-sfc": "^3.3.0",
+    "vue-template-compiler": "^2.7.0"
+  },
+  "browserslist": [
+    "> 1%",
+    "last 2 versions",
+    "not dead",
+    "not ie 11"
+  ],
+  "keywords": [
+    "mailbox",
+    "email",
+    "admin",
+    "vue",
+    "element-plus"
+  ],
+  "author": "Mailbox System",
+  "license": "MIT"
+}

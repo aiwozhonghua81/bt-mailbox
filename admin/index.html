@@ -1,0 +1,654 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>邮箱系统管理后台</title>
+    <link href="https://cdn.jsdelivr.net/npm/element-plus@2.3.12/dist/index.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/vue@3.3.4/dist/vue.global.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/element-plus@2.3.12/dist/index.full.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/axios@1.5.0/dist/axios.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js"></script>
+    <style>
+        body { margin: 0; font-family: -apple-system, BlinkMacSystemFont, sans-serif; }
+        .login-container { 
+            display: flex; 
+            justify-content: center; 
+            align-items: center; 
+            height: 100vh; 
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); 
+        }
+        .login-form { 
+            background: white; 
+            padding: 2rem; 
+            border-radius: 12px; 
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2); 
+            width: 400px; 
+        }
+        .dashboard-header { 
+            background: #fff; 
+            border-bottom: 1px solid #e6e6e6; 
+            padding: 0 20px; 
+            display: flex; 
+            justify-content: space-between; 
+            align-items: center; 
+        }
+        .sidebar { background: #304156; }
+        .sidebar .el-menu { border-right: none; }
+        .main-content { background: #f5f5f5; padding: 20px; }
+        .stat-card { 
+            background: white; 
+            border-radius: 8px; 
+            padding: 20px; 
+            box-shadow: 0 2px 12px rgba(0,0,0,0.1); 
+            text-align: center; 
+        }
+        .stat-number { 
+            font-size: 2rem; 
+            font-weight: bold; 
+            margin-bottom: 8px; 
+        }
+        .chart-container { 
+            background: white; 
+            border-radius: 8px; 
+            padding: 20px; 
+            box-shadow: 0 2px 12px rgba(0,0,0,0.1); 
+            margin-top: 20px; 
+        }
+    </style>
+</head>
+<body>
+    <div id="app">
+        <!-- 登录界面 -->
+        <div v-if="!isLoggedIn" class="login-container">
+            <div class="login-form">
+                <h2 style="text-align: center; margin-bottom: 2rem; color: #333;">
+                    📧 邮箱系统管理后台
+                </h2>
+                <el-form :model="loginForm" @submit.prevent="login">
+                    <el-form-item>
+                        <el-input 
+                            v-model="loginForm.email" 
+                            placeholder="管理员邮箱"
+                            prefix-icon="User"
+                            size="large">
+                        </el-input>
+                    </el-form-item>
+                    <el-form-item>
+                        <el-input 
+                            v-model="loginForm.password" 
+                            type="password" 
+                            placeholder="密码"
+                            prefix-icon="Lock"
+                            size="large"
+                            @keyup.enter="login">
+                        </el-input>
+                    </el-form-item>
+                    <el-form-item>
+                        <el-button 
+                            type="primary" 
+                            size="large" 
+                            style="width: 100%;"
+                            :loading="loginLoading"
+                            @click="login">
+                            登录
+                        </el-button>
+                    </el-form-item>
+                </el-form>
+            </div>
+        </div>
+
+        <!-- 主界面 -->
+        <el-container v-if="isLoggedIn" style="height: 100vh;">
+            <!-- 头部 -->
+            <el-header class="dashboard-header">
+                <div>
+                    <h2 style="margin: 0; color: #333;">📧 企业级邮箱系统</h2>
+                </div>
+                <div>
+                    <el-dropdown @command="handleCommand">
+                        <span style="cursor: pointer; color: #666;">
+                            {{ currentUser.name || currentUser.email }}
+                            <el-icon><arrow-down /></el-icon>
+                        </span>
+                        <template #dropdown>
+                            <el-dropdown-menu>
+                                <el-dropdown-item command="profile">个人资料</el-dropdown-item>
+                                <el-dropdown-item command="logout" divided>退出登录</el-dropdown-item>
+                            </el-dropdown-menu>
+                        </template>
+                    </el-dropdown>
+                </div>
+            </el-header>
+
+            <el-container>
+                <!-- 侧边栏 -->
+                <el-aside width="200px" class="sidebar">
+                    <el-menu
+                        :default-active="activeMenu"
+                        background-color="#304156"
+                        text-color="#bfcbd9"
+                        active-text-color="#409EFF"
+                        @select="handleMenuSelect">
+                        <el-menu-item index="dashboard">
+                            <el-icon><odometer /></el-icon>
+                            <span>系统概览</span>
+                        </el-menu-item>
+                        <el-menu-item index="users">
+                            <el-icon><user /></el-icon>
+                            <span>用户管理</span>
+                        </el-menu-item>
+                        <el-menu-item index="domains">
+                            <el-icon><connection /></el-icon>
+                            <span>域名管理</span>
+                        </el-menu-item>
+                        <el-menu-item index="mail">
+                            <el-icon><message /></el-icon>
+                            <span>邮件管理</span>
+                        </el-menu-item>
+                        <el-menu-item index="monitoring">
+                            <el-icon><monitor /></el-icon>
+                            <span>系统监控</span>
+                        </el-menu-item>
+                        <el-menu-item index="ai">
+                            <el-icon><cpu /></el-icon>
+                            <span>AI设置</span>
+                        </el-menu-item>
+                        <el-menu-item index="settings">
+                            <el-icon><setting /></el-icon>
+                            <span>系统设置</span>
+                        </el-menu-item>
+                    </el-menu>
+                </el-aside>
+
+                <!-- 主内容区 -->
+                <el-main class="main-content">
+                    <!-- 系统概览 -->
+                    <div v-if="activeMenu === 'dashboard'">
+                        <h3>系统概览</h3>
+                        <el-row :gutter="20">
+                            <el-col :span="6">
+                                <div class="stat-card">
+                                    <div class="stat-number" style="color: #409EFF;">{{ stats.users_count }}</div>
+                                    <div>用户总数</div>
+                                </div>
+                            </el-col>
+                            <el-col :span="6">
+                                <div class="stat-card">
+                                    <div class="stat-number" style="color: #67C23A;">{{ stats.active_users }}</div>
+                                    <div>活跃用户</div>
+                                </div>
+                            </el-col>
+                            <el-col :span="6">
+                                <div class="stat-card">
+                                    <div class="stat-number" style="color: #E6A23C;">{{ stats.cpu_percent }}%</div>
+                                    <div>CPU使用率</div>
+                                </div>
+                            </el-col>
+                            <el-col :span="6">
+                                <div class="stat-card">
+                                    <div class="stat-number" style="color: #F56C6C;">{{ stats.memory_percent }}%</div>
+                                    <div>内存使用率</div>
+                                </div>
+                            </el-col>
+                        </el-row>
+
+                        <!-- 图表 -->
+                        <div class="chart-container">
+                            <h4>系统性能趋势</h4>
+                            <div id="performanceChart" style="height: 300px;"></div>
+                        </div>
+                    </div>
+
+                    <!-- 用户管理 -->
+                    <div v-if="activeMenu === 'users'">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                            <h3>用户管理</h3>
+                            <div>
+                                <el-button type="primary" @click="showAddUser = true">
+                                    <el-icon><plus /></el-icon>
+                                    添加用户
+                                </el-button>
+                                <el-button @click="showBatchImport = true">
+                                    <el-icon><upload /></el-icon>
+                                    批量导入
+                                </el-button>
+                            </div>
+                        </div>
+
+                        <el-card>
+                            <el-table :data="users" style="width: 100%;" v-loading="usersLoading">
+                                <el-table-column prop="id" label="ID" width="80"></el-table-column>
+                                <el-table-column prop="email" label="邮箱地址" width="200"></el-table-column>
+                                <el-table-column prop="name" label="姓名" width="150"></el-table-column>
+                                <el-table-column prop="enabled" label="状态" width="100">
+                                    <template #default="scope">
+                                        <el-tag :type="scope.row.enabled ? 'success' : 'danger'">
+                                            {{ scope.row.enabled ? '启用' : '禁用' }}
+                                        </el-tag>
+                                    </template>
+                                </el-table-column>
+                                <el-table-column prop="is_admin" label="管理员" width="100">
+                                    <template #default="scope">
+                                        <el-tag v-if="scope.row.is_admin" type="warning">是</el-tag>
+                                        <span v-else>否</span>
+                                    </template>
+                                </el-table-column>
+                                <el-table-column prop="created_at" label="创建时间" width="180"></el-table-column>
+                                <el-table-column label="操作" width="200">
+                                    <template #default="scope">
+                                        <el-button size="small" @click="editUser(scope.row)">编辑</el-button>
+                                        <el-button 
+                                            size="small" 
+                                            :type="scope.row.enabled ? 'warning' : 'success'"
+                                            @click="toggleUserStatus(scope.row)">
+                                            {{ scope.row.enabled ? '禁用' : '启用' }}
+                                        </el-button>
+                                        <el-button size="small" type="danger" @click="deleteUser(scope.row)">删除</el-button>
+                                    </template>
+                                </el-table-column>
+                            </el-table>
+                        </el-card>
+                    </div>
+
+                    <!-- 系统监控 -->
+                    <div v-if="activeMenu === 'monitoring'">
+                        <h3>系统监控</h3>
+                        <el-row :gutter="20">
+                            <el-col :span="12">
+                                <el-card title="服务状态">
+                                    <div slot="header">
+                                        <span>服务状态</span>
+                                    </div>
+                                    <el-table :data="serviceStatus" style="width: 100%;">
+                                        <el-table-column prop="name" label="服务名称"></el-table-column>
+                                        <el-table-column prop="status" label="状态">
+                                            <template #default="scope">
+                                                <el-tag :type="scope.row.status === 'running' ? 'success' : 'danger'">
+                                                    {{ scope.row.status === 'running' ? '运行中' : '已停止' }}
+                                                </el-tag>
+                                            </template>
+                                        </el-table-column>
+                                        <el-table-column label="操作">
+                                            <template #default="scope">
+                                                <el-button size="small" @click="restartService(scope.row.name)">重启</el-button>
+                                            </template>
+                                        </el-table-column>
+                                    </el-table>
+                                </el-card>
+                            </el-col>
+                            <el-col :span="12">
+                                <el-card title="实时日志">
+                                    <div slot="header">
+                                        <span>实时日志</span>
+                                        <el-button style="float: right;" size="small" @click="clearLogs">清空</el-button>
+                                    </div>
+                                    <div style="height: 300px; overflow-y: auto; background: #000; color: #0f0; padding: 10px; font-family: monospace; font-size: 12px;">
+                                        <div v-for="log in logs" :key="log.id">{{ log.message }}</div>
+                                    </div>
+                                </el-card>
+                            </el-col>
+                        </el-row>
+                    </div>
+
+                    <!-- AI设置 -->
+                    <div v-if="activeMenu === 'ai'">
+                        <h3>AI智能设置</h3>
+                        <el-row :gutter="20">
+                            <el-col :span="12">
+                                <el-card title="垃圾邮件检测">
+                                    <el-form label-width="120px">
+                                        <el-form-item label="启用检测">
+                                            <el-switch v-model="aiSettings.spamDetection"></el-switch>
+                                        </el-form-item>
+                                        <el-form-item label="检测阈值">
+                                            <el-slider v-model="aiSettings.spamThreshold" :min="0" :max="100"></el-slider>
+                                        </el-form-item>
+                                        <el-form-item label="模型状态">
+                                            <el-tag type="success">已训练 (准确率: 95.2%)</el-tag>
+                                        </el-form-item>
+                                        <el-form-item>
+                                            <el-button type="primary">重新训练模型</el-button>
+                                        </el-form-item>
+                                    </el-form>
+                                </el-card>
+                            </el-col>
+                            <el-col :span="12">
+                                <el-card title="邮件分类">
+                                    <el-form label-width="120px">
+                                        <el-form-item label="启用分类">
+                                            <el-switch v-model="aiSettings.classification"></el-switch>
+                                        </el-form-item>
+                                        <el-form-item label="分类规则">
+                                            <el-select v-model="aiSettings.classificationRule" style="width: 100%;">
+                                                <el-option label="智能分类" value="auto"></el-option>
+                                                <el-option label="按发件人" value="sender"></el-option>
+                                                <el-option label="按主题" value="subject"></el-option>
+                                            </el-select>
+                                        </el-form-item>
+                                        <el-form-item label="启用摘要">
+                                            <el-switch v-model="aiSettings.summarization"></el-switch>
+                                        </el-form-item>
+                                    </el-form>
+                                </el-card>
+                            </el-col>
+                        </el-row>
+                    </div>
+
+                    <!-- 系统设置 -->
+                    <div v-if="activeMenu === 'settings'">
+                        <h3>系统设置</h3>
+                        <el-tabs>
+                            <el-tab-pane label="基础设置" name="basic">
+                                <el-form :model="systemSettings" label-width="120px">
+                                    <el-form-item label="系统名称">
+                                        <el-input v-model="systemSettings.systemName"></el-input>
+                                    </el-form-item>
+                                    <el-form-item label="默认配额">
+                                        <el-input v-model="systemSettings.defaultQuota" suffix="MB"></el-input>
+                                    </el-form-item>
+                                    <el-form-item label="最大附件">
+                                        <el-input v-model="systemSettings.maxAttachment" suffix="MB"></el-input>
+                                    </el-form-item>
+                                    <el-form-item>
+                                        <el-button type="primary" @click="saveSettings">保存设置</el-button>
+                                    </el-form-item>
+                                </el-form>
+                            </el-tab-pane>
+                            <el-tab-pane label="邮件设置" name="mail">
+                                <el-form :model="mailSettings" label-width="120px">
+                                    <el-form-item label="SMTP服务器">
+                                        <el-input v-model="mailSettings.smtpHost"></el-input>
+                                    </el-form-item>
+                                    <el-form-item label="SMTP端口">
+                                        <el-input v-model="mailSettings.smtpPort"></el-input>
+                                    </el-form-item>
+                                    <el-form-item label="IMAP服务器">
+                                        <el-input v-model="mailSettings.imapHost"></el-input>
+                                    </el-form-item>
+                                    <el-form-item label="IMAP端口">
+                                        <el-input v-model="mailSettings.imapPort"></el-input>
+                                    </el-form-item>
+                                    <el-form-item>
+                                        <el-button type="primary" @click="saveMailSettings">保存设置</el-button>
+                                    </el-form-item>
+                                </el-form>
+                            </el-tab-pane>
+                        </el-tabs>
+                    </div>
+                </el-main>
+            </el-container>
+        </el-container>
+
+        <!-- 添加用户对话框 -->
+        <el-dialog v-model="showAddUser" title="添加用户" width="500px">
+            <el-form :model="newUser" label-width="80px">
+                <el-form-item label="邮箱地址" required>
+                    <el-input v-model="newUser.email" placeholder="user@example.com"></el-input>
+                </el-form-item>
+                <el-form-item label="密码" required>
+                    <el-input v-model="newUser.password" type="password" placeholder="请输入密码"></el-input>
+                </el-form-item>
+                <el-form-item label="姓名">
+                    <el-input v-model="newUser.name" placeholder="用户姓名"></el-input>
+                </el-form-item>
+                <el-form-item label="配额">
+                    <el-input v-model="newUser.quota" placeholder="1024" suffix="MB"></el-input>
+                </el-form-item>
+                <el-form-item label="状态">
+                    <el-switch v-model="newUser.enabled" active-text="启用" inactive-text="禁用"></el-switch>
+                </el-form-item>
+            </el-form>
+            <template #footer>
+                <el-button @click="showAddUser = false">取消</el-button>
+                <el-button type="primary" @click="addUser" :loading="addUserLoading">确定</el-button>
+            </template>
+        </el-dialog>
+    </div>
+
+    <script>
+        const { createApp } = Vue;
+        const app = createApp({
+            data() {
+                return {
+                    isLoggedIn: false,
+                    loginLoading: false,
+                    loginForm: {
+                        email: '',
+                        password: ''
+                    },
+                    currentUser: {},
+                    activeMenu: 'dashboard',
+                    stats: {
+                        users_count: 0,
+                        active_users: 0,
+                        cpu_percent: 0,
+                        memory_percent: 0,
+                        disk_percent: 0
+                    },
+                    users: [],
+                    usersLoading: false,
+                    showAddUser: false,
+                    showBatchImport: false,
+                    addUserLoading: false,
+                    newUser: {
+                        email: '',
+                        password: '',
+                        name: '',
+                        quota: 1024,
+                        enabled: true
+                    },
+                    serviceStatus: [
+                        { name: 'Postfix', status: 'running' },
+                        { name: 'Dovecot', status: 'running' },
+                        { name: 'Redis', status: 'running' },
+                        { name: 'MySQL', status: 'running' },
+                        { name: 'API服务', status: 'running' }
+                    ],
+                    logs: [
+                        { id: 1, message: '[2024-01-01 10:00:01] 系统启动完成' },
+                        { id: 2, message: '[2024-01-01 10:00:02] 邮件服务已就绪' },
+                        { id: 3, message: '[2024-01-01 10:00:03] AI服务初始化完成' }
+                    ],
+                    aiSettings: {
+                        spamDetection: true,
+                        spamThreshold: 80,
+                        classification: true,
+                        classificationRule: 'auto',
+                        summarization: false
+                    },
+                    systemSettings: {
+                        systemName: '企业级邮箱系统',
+                        defaultQuota: 1024,
+                        maxAttachment: 50
+                    },
+                    mailSettings: {
+                        smtpHost: 'localhost',
+                        smtpPort: 587,
+                        imapHost: 'localhost',
+                        imapPort: 993
+                    }
+                }
+            },
+            mounted() {
+                // 检查登录状态
+                const token = localStorage.getItem('admin_token');
+                if (token) {
+                    this.isLoggedIn = true;
+                    this.loadData();
+                }
+            },
+            methods: {
+                async login() {
+                    if (!this.loginForm.email || !this.loginForm.password) {
+                        this.$message.error('请输入邮箱和密码');
+                        return;
+                    }
+                    
+                    this.loginLoading = true;
+                    try {
+                        const response = await axios.post('/api/auth/login', this.loginForm);
+                        if (response.data.success) {
+                            this.isLoggedIn = true;
+                            this.currentUser = response.data.user;
+                            localStorage.setItem('admin_token', response.data.token || 'temp_token');
+                            this.$message.success('登录成功');
+                            this.loadData();
+                        } else {
+                            this.$message.error(response.data.message || '登录失败');
+                        }
+                    } catch (error) {
+                        this.$message.error('登录失败: ' + error.message);
+                    }
+                    this.loginLoading = false;
+                },
+                
+                logout() {
+                    this.isLoggedIn = false;
+                    this.currentUser = {};
+                    localStorage.removeItem('admin_token');
+                    this.$message.success('已退出登录');
+                },
+                
+                handleCommand(command) {
+                    if (command === 'logout') {
+                        this.logout();
+                    }
+                },
+                
+                handleMenuSelect(index) {
+                    this.activeMenu = index;
+                    if (index === 'users') {
+                        this.loadUsers();
+                    }
+                },
+                
+                async loadData() {
+                    await this.loadStats();
+                    if (this.activeMenu === 'users') {
+                        await this.loadUsers();
+                    }
+                    this.initChart();
+                },
+                
+                async loadStats() {
+                    try {
+                        const response = await axios.get('/api/system/stats');
+                        if (response.data.success) {
+                            this.stats = response.data.data;
+                        }
+                    } catch (error) {
+                        console.error('加载统计数据失败:', error);
+                    }
+                },
+                
+                async loadUsers() {
+                    this.usersLoading = true;
+                    try {
+                        const response = await axios.get('/api/users');
+                        if (response.data.success) {
+                            this.users = response.data.data;
+                        }
+                    } catch (error) {
+                        this.$message.error('加载用户数据失败');
+                    }
+                    this.usersLoading = false;
+                },
+                
+                async addUser() {
+                    if (!this.newUser.email || !this.newUser.password) {
+                        this.$message.error('请填写必填字段');
+                        return;
+                    }
+                    
+                    this.addUserLoading = true;
+                    try {
+                        const response = await axios.post('/api/users', this.newUser);
+                        if (response.data.success) {
+                            this.$message.success('用户创建成功');
+                            this.showAddUser = false;
+                            this.newUser = { email: '', password: '', name: '', quota: 1024, enabled: true };
+                            this.loadUsers();
+                        } else {
+                            this.$message.error(response.data.message || '创建失败');
+                        }
+                    } catch (error) {
+                        this.$message.error('创建用户失败: ' + error.message);
+                    }
+                    this.addUserLoading = false;
+                },
+                
+                editUser(user) {
+                    this.$message.info('编辑功能开发中...');
+                },
+                
+                toggleUserStatus(user) {
+                    this.$message.info('状态切换功能开发中...');
+                },
+                
+                deleteUser(user) {
+                    this.$confirm('确定要删除此用户吗？', '警告', {
+                        confirmButtonText: '确定',
+                        cancelButtonText: '取消',
+                        type: 'warning'
+                    }).then(() => {
+                        this.$message.info('删除功能开发中...');
+                    });
+                },
+                
+                restartService(serviceName) {
+                    this.$message.success(`正在重启 ${serviceName} 服务...`);
+                },
+                
+                clearLogs() {
+                    this.logs = [];
+                    this.$message.success('日志已清空');
+                },
+                
+                saveSettings() {
+                    this.$message.success('设置已保存');
+                },
+                
+                saveMailSettings() {
+                    this.$message.success('邮件设置已保存');
+                },
+                
+                initChart() {
+                    this.$nextTick(() => {
+                        const chartDom = document.getElementById('performanceChart');
+                        if (chartDom) {
+                            const myChart = echarts.init(chartDom);
+                            const option = {
+                                title: { text: '系统性能监控' },
+                                tooltip: { trigger: 'axis' },
+                                legend: { data: ['CPU使用率', '内存使用率'] },
+                                xAxis: {
+                                    type: 'category',
+                                    data: ['00:00', '04:00', '08:00', '12:00', '16:00', '20:00']
+                                },
+                                yAxis: { type: 'value', max: 100 },
+                                series: [
+                                    {
+                                        name: 'CPU使用率',
+                                        type: 'line',
+                                        data: [20, 25, 30, 45, 35, 28]
+                                    },
+                                    {
+                                        name: '内存使用率',
+                                        type: 'line',
+                                        data: [40, 42, 45, 50, 48, 46]
+                                    }
+                                ]
+                            };
+                            myChart.setOption(option);
+                        }
+                    });
+                }
+            }
+        });
+        
+        app.use(ElementPlus);
+        app.mount('#app');
+    </script>
+</body>
+</html>

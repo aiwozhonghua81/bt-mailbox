@@ -1,0 +1,186 @@
+{
+  "name": "mailbox_system",
+  "title": "企业级邮箱系统",
+  "version": "1.0.0",
+  "author": "BT-Mailbox Team",
+  "home": "https://github.com/bt-mailbox/mailbox-system",
+  "date": "2024-01-01",
+  "shell": "mailbox_system_main.py",
+  "install": "install.sh",
+  "uninstall": "uninstall.sh",
+  "upgrade": "upgrade.sh",
+  "description": "基于宝塔面板的企业级邮箱系统，支持无限邮箱注册、AI智能过滤、实时监控等功能",
+  "keywords": ["邮箱", "邮件服务器", "Postfix", "Dovecot", "AI", "监控"],
+  "requirements": {
+    "os": ["ubuntu"],
+    "panel_version": ">=7.0.0",
+    "python_version": ">=3.8",
+    "memory": ">=2GB",
+    "disk": ">=20GB"
+  },
+  "features": [
+    "无限邮箱账号注册",
+    "Redis缓存加速",
+    "AI智能垃圾邮件过滤",
+    "现代化Web管理界面",
+    "实时系统监控",
+    "自动化备份恢复",
+    "SSL加密支持",
+    "移动端适配"
+  ],
+  "services": [
+    {
+      "name": "postfix",
+      "display_name": "SMTP服务",
+      "description": "邮件发送服务",
+      "port": [25, 587]
+    },
+    {
+      "name": "dovecot",
+      "display_name": "IMAP服务",
+      "description": "邮件接收服务",
+      "port": [993, 995]
+    },
+    {
+      "name": "redis-server",
+      "display_name": "Redis缓存",
+      "description": "缓存服务",
+      "port": [6379]
+    },
+    {
+      "name": "bt-mailbox-api",
+      "display_name": "API服务",
+      "description": "后端API服务",
+      "port": [5000]
+    }
+  ],
+  "database": {
+    "name": "bt_mailbox",
+    "user": "bt_mailbox_user",
+    "charset": "utf8mb4"
+  },
+  "directories": [
+    "/opt/bt-mailbox",
+    "/var/mail/vhosts",
+    "/opt/bt-mailbox/logs",
+    "/opt/bt-mailbox/backups"
+  ],
+  "config_files": [
+    "/etc/postfix/main.cf",
+    "/etc/dovecot/dovecot.conf",
+    "/etc/redis/redis.conf"
+  ],
+  "menu": [
+    {
+      "id": "dashboard",
+      "title": "系统概览",
+      "icon": "fa fa-dashboard",
+      "template": "dashboard.html"
+    },
+    {
+      "id": "users",
+      "title": "用户管理",
+      "icon": "fa fa-users",
+      "template": "users.html"
+    },
+    {
+      "id": "domains",
+      "title": "域名管理",
+      "icon": "fa fa-globe",
+      "template": "domains.html"
+    },
+    {
+      "id": "mail",
+      "title": "邮件管理",
+      "icon": "fa fa-envelope",
+      "template": "mail.html"
+    },
+    {
+      "id": "monitoring",
+      "title": "系统监控",
+      "icon": "fa fa-line-chart",
+      "template": "monitoring.html"
+    },
+    {
+      "id": "ai",
+      "title": "AI设置",
+      "icon": "fa fa-robot",
+      "template": "ai.html"
+    },
+    {
+      "id": "backup",
+      "title": "备份管理",
+      "icon": "fa fa-archive",
+      "template": "backup.html"
+    },
+    {
+      "id": "settings",
+      "title": "系统设置",
+      "icon": "fa fa-cog",
+      "template": "settings.html"
+    }
+  ],
+  "api_endpoints": [
+    {
+      "path": "/get_stats",
+      "method": "GET",
+      "description": "获取系统统计信息"
+    },
+    {
+      "path": "/get_users",
+      "method": "GET",
+      "description": "获取用户列表"
+    },
+    {
+      "path": "/add_user",
+      "method": "POST",
+      "description": "添加用户"
+    },
+    {
+      "path": "/delete_user",
+      "method": "POST",
+      "description": "删除用户"
+    },
+    {
+      "path": "/toggle_user_status",
+      "method": "POST",
+      "description": "切换用户状态"
+    },
+    {
+      "path": "/restart_service",
+      "method": "POST",
+      "description": "重启服务"
+    },
+    {
+      "path": "/get_logs",
+      "method": "GET",
+      "description": "获取系统日志"
+    },
+    {
+      "path": "/backup_system",
+      "method": "POST",
+      "description": "备份系统"
+    }
+  ],
+  "permissions": [
+    "read_users",
+    "write_users",
+    "manage_services",
+    "view_logs",
+    "system_backup",
+    "system_config"
+  ],
+  "changelog": [
+    {
+      "version": "1.0.0",
+      "date": "2024-01-01",
+      "changes": [
+        "初始版本发布",
+        "支持无限邮箱注册",
+        "集成AI智能过滤",
+        "实现实时监控功能",
+        "添加自动化备份"
+      ]
+    }
+  ]
+}

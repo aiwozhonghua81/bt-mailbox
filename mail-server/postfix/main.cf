@@ -1,0 +1,128 @@
+# Postfix主配置文件 - 企业级邮箱系统
+# 支持虚拟用户和域名，集成MySQL数据库
+
+# 基础配置
+myhostname = mail.example.com
+mydomain = example.com
+myorigin = $mydomain
+inet_interfaces = all
+inet_protocols = ipv4
+mydestination = localhost
+
+# 网络和连接设置
+message_size_limit = 52428800
+mailbox_size_limit = 0
+recipient_delimiter = +
+unknown_local_recipient_reject_code = 550
+
+# TLS/SSL配置
+smtpd_use_tls = yes
+smtpd_tls_security_level = may
+smtpd_tls_auth_only = yes
+smtpd_tls_cert_file = /etc/ssl/certs/mailserver.crt
+smtpd_tls_key_file = /etc/ssl/private/mailserver.key
+smtpd_tls_session_cache_database = btree:${data_directory}/smtpd_scache
+smtp_tls_session_cache_database = btree:${data_directory}/smtp_scache
+smtpd_tls_protocols = !SSLv2, !SSLv3, !TLSv1, !TLSv1.1
+smtp_tls_protocols = !SSLv2, !SSLv3, !TLSv1, !TLSv1.1
+smtpd_tls_mandatory_protocols = !SSLv2, !SSLv3, !TLSv1, !TLSv1.1
+smtp_tls_mandatory_protocols = !SSLv2, !SSLv3, !TLSv1, !TLSv1.1
+
+# 虚拟域名和用户配置
+virtual_mailbox_domains = mysql:/etc/postfix/mysql-virtual-domains.cf
+virtual_mailbox_maps = mysql:/etc/postfix/mysql-virtual-users.cf
+virtual_alias_maps = mysql:/etc/postfix/mysql-virtual-aliases.cf
+virtual_mailbox_base = /var/mail/vhosts
+virtual_uid_maps = static:5000
+virtual_gid_maps = static:5000
+virtual_minimum_uid = 100
+virtual_mailbox_limit = 0
+
+# SASL认证配置
+smtpd_sasl_type = dovecot
+smtpd_sasl_path = private/auth
+smtpd_sasl_auth_enable = yes
+smtpd_sasl_security_options = noanonymous, noplaintext
+smtpd_sasl_tls_security_options = noanonymous
+broken_sasl_auth_clients = yes
+
+# 客户端限制
+smtpd_helo_restrictions = 
+    permit_mynetworks,
+    permit_sasl_authenticated,
+    reject_invalid_helo_hostname,
+    reject_non_fqdn_helo_hostname
+
+smtpd_sender_restrictions = 
+    permit_mynetworks,
+    permit_sasl_authenticated,
+    reject_non_fqdn_sender,
+    reject_unknown_sender_domain
+
+smtpd_recipient_restrictions = 
+    permit_mynetworks,
+    permit_sasl_authenticated,
+    reject_non_fqdn_recipient,
+    reject_unknown_recipient_domain,
+    reject_unauth_destination,
+    check_policy_service inet:127.0.0.1:10023,
+    permit
+
+# 反垃圾邮件配置
+smtpd_milters = inet:127.0.0.1:11332
+non_smtpd_milters = inet:127.0.0.1:11332
+milter_protocol = 6
+milter_mail_macros = i {mail_addr} {client_addr} {client_name} {auth_authen}
+milter_default_action = accept
+
+# 队列配置
+maximal_queue_lifetime = 1d
+bounce_queue_lifetime = 1d
+maximal_backoff_time = 4000s
+minimal_backoff_time = 300s
+queue_run_delay = 300s
+
+# 日志配置
+maillog_file = /var/log/postfix.log
+maillog_file_rotate_suffix = %Y%m%d-%H%M%S
+
+# 性能优化
+default_process_limit = 100
+smtpd_client_connection_count_limit = 50
+smtpd_client_connection_rate_limit = 30
+anvil_rate_time_unit = 60s
+
+# 本地投递配置
+local_recipient_maps = unix:passwd.byname $alias_maps
+local_transport = virtual
+virtual_transport = lmtp:unix:private/dovecot-lmtp
+
+# 头部检查
+header_checks = regexp:/etc/postfix/header_checks
+body_checks = regexp:/etc/postfix/body_checks
+
+# 地址重写
+sender_canonical_maps = mysql:/etc/postfix/mysql-sender-canonical.cf
+recipient_canonical_maps = mysql:/etc/postfix/mysql-recipient-canonical.cf
+
+# 调试配置（生产环境应关闭）
+debug_peer_level = 2
+debugger_command =
+    PATH=/bin:/usr/bin:/usr/local/bin:/usr/X11R6/bin
+    ddd $daemon_directory/$process_name $process_id & sleep 5
+
+# 兼容性设置
+compatibility_level = 3.6
+
+# 自定义配置
+# 允许的发件人域名
+smtpd_sender_login_maps = mysql:/etc/postfix/mysql-sender-login.cf
+
+# 速率限制
+smtpd_client_message_rate_limit = 100
+smtpd_client_recipient_rate_limit = 1000
+smtpd_client_event_limit_exceptions = 127.0.0.0/8
+
+# 内容过滤器集成
+content_filter = amavis:[127.0.0.1]:10024
+receive_override_options = no_address_mappings
